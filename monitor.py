@@ -171,6 +171,15 @@ def offline_clients(now=None):
         return [name for name, client in CLIENTS.items() if now - client['last_seen'] >= 15]
 
 
+def mismatch(identity, message, source):
+    """The game and its manifest disagree: a decide request the service rejected, or a mismatch the SDK reported."""
+    with LOCK:
+        client = get_client(identity)
+        client['stats']['mismatches'] += 1
+        client['mismatch'] = {'message': text(message, 300), 'at': time.time(), 'source': source}
+        event(client, 'error', 'Manifest mismatch (%s): %s' % (source, text(message, 300)))
+
+
 def set_setting(name, value):
     with LOCK:
         SETTINGS[name] = value
@@ -210,7 +219,7 @@ def event(client, kind, message, payload=None, entity=None):
 
 def empty_stats():
     return {'batches': 0, 'provider_calls': 0, 'questions': 0, 'ai': 0, 'cached': 0, 'fallback': 0, 'fallback_codes': {},
-            'pending': 0, 'reports': 0, 'reports_ignored': 0, 'context_updates': 0, 'latency_ms': None}
+            'pending': 0, 'reports': 0, 'reports_ignored': 0, 'context_updates': 0, 'latency_ms': None, 'mismatches': 0}
 
 
 def get_client(identity, restored=False):
@@ -293,6 +302,8 @@ def telemetry(data):
     with LOCK:
         client = get_client(identity)
         old = client['telemetry']
+        if snapshot['last_error'].startswith('Manifest mismatch') and snapshot['last_error'] != (old or {}).get('last_error'):
+            mismatch(identity, snapshot['last_error'][len('Manifest mismatch: '):], 'sdk')  # SDKs keep invalid requests to themselves and say so here
         if old and old.get('mode') != snapshot['mode']:
             client['memory'].clear()  # a mode switch drops in-flight decisions; start memory fresh
         for name in ('mode', 'scene', 'scope', 'paused', 'last_error'):

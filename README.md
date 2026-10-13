@@ -6,14 +6,14 @@ The service holds the provider key; it is never sent to the game or the console.
 
 | Service | Protocol | Runtime |
 | --- | --- | --- |
-| `0.1.1` | `0.1` | Docker, or Python 3.12+ |
+| `0.1.2` | `0.1` | Docker, or Python 3.12+ |
 
 ## Run
 
 With Docker, using the published image (amd64 and arm64):
 
 ```sh
-docker run -d --name a2g -p 127.0.0.1:8787:8787 -v a2g-data:/data -e TYPESAFE_API_KEY=... -e A2G_PROVIDER=jev ghcr.io/agent2game/a2g-service:0.1.1
+docker run -d --name a2g -p 127.0.0.1:8787:8787 -v a2g-data:/data -e TYPESAFE_API_KEY=... -e A2G_PROVIDER=jev ghcr.io/agent2game/a2g-service:0.1.2
 ```
 
 Or from this repository: `cp .env.example .env`, put a provider key in it, then `docker compose up -d --build`. Without Docker: `pip install -r requirements.txt`, then `python3 decision_service.py`.

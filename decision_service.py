@@ -689,7 +689,11 @@ def handle(path, data):
         monitor.report(identity, monitor.key(data.get('entity_id')), data['decision_id'], action, status,
                        monitor.scalars(data.get('outcome'), 12, lambda name: monitor.key(name, 40)))
         return 200, {'ok': True}  # ignored reports also answer ok: the game cannot tell (and need not)
-    epoch, world, scope, scope_state, chain, entities = check_decide(data, manifest)
+    try:
+        epoch, world, scope, scope_state, chain, entities = check_decide(data, manifest)
+    except ValueError as failure:  # the game and its manifest disagree: make it visible, not just a 400
+        monitor.mismatch(identity, str(failure), 'service')
+        raise
     with monitor.LOCK:
         digest = monitor.CLIENTS[identity]['manifest_hash']
     monitor.request_started(identity, entities)

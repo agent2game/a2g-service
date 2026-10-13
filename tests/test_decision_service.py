@@ -117,6 +117,19 @@ class ServiceTests(unittest.TestCase):
         failed = [slot for slot, result in decision['slots'].items() if result.get('code') == 'unavailable']
         self.assertEqual((len(decided), len(failed), decision['source']), (32, 8, 'AI'))
 
+    def test_manifest_mismatch_is_visible(self):
+        with self.assertRaises(ValueError):
+            service.handle('/v1/decide', DECIDE | {'entities': [ENTITY | {'observation': OBSERVATION | {'mood': 'furious'}}]})
+        client = monitor.snapshot('test-client')
+        self.assertEqual((client['stats']['mismatches'], client['mismatch']['source']), (1, 'service'))
+        self.assertIn('mood', client['mismatch']['message'])
+        telemetry = {'client_id': 'test-client', 'mode': 'ai', 'paused': False, 'entities': [], 'last_error': 'Manifest mismatch: guard: action "taunt" is not in the manifest'}
+        service.handle('/v1/telemetry', telemetry)
+        service.handle('/v1/telemetry', telemetry)  # the same error again is not counted twice
+        client = monitor.snapshot('test-client')
+        self.assertEqual((client['stats']['mismatches'], client['mismatch']['source']), (2, 'sdk'))
+        self.assertIn('taunt', client['mismatch']['message'])
+
     def test_budget_warning(self):
         tight = copy.deepcopy(MANIFEST)
         tight['entity_types']['guard']['max_input_tokens'] = 60

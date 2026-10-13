@@ -411,7 +411,8 @@ function render(c){latest=c;const t=obj(c.telemetry),entities=arr(t.entities).ma
  $('tab-entities').textContent='Entities ('+entities.length+')';$('tab-logs').textContent='Logs ('+arr(c.logs).length+')';
  $('tab-context').textContent='Context'+(t.scope!=null?' · '+t.scope:'');$('tab-manifest').textContent='Manifest'+(c.override?' · override':'');
  $('override-banner').replaceChildren(...(c.override?[h('div',{class:'banner',role:'status'},h('span',null,'Manifest override active for '+fmt(c.game)+' since '+time(c.override.at)+': the service uses the manifest edited in this console, not the one the game sent.'),
-  h('button',{type:'button','data-tab-link':'manifest'},'Edit'),h('button',{type:'button','data-clear-override':''},'Clear override'))]:[]));
+  h('button',{type:'button','data-tab-link':'manifest'},'Edit'),h('button',{type:'button','data-clear-override':''},'Clear override'))]:[]),
+  ...(c.mismatch?[h('div',{class:'banner',role:'alert'},h('span',null,'Manifest mismatch ('+fmt(obj(c.stats).mismatches)+' so far, last '+time(c.mismatch.at)+', found by the '+(c.mismatch.source==='sdk'?'SDK':'service')+'): '+fmt(c.mismatch.message)+'. The game no longer matches its manifest, so these entities run on native AI. Update the manifest or the adapter.'))]:[]));
  $('delete').disabled=c.status==='online';
  if(tab==='overview')renderOverview(c);else if(tab==='entities')renderEntities(c,entities);else if(tab==='context')renderContext(c);else if(tab==='manifest')renderManifest(c);else renderLogs();}
 $('override-banner').addEventListener('click',e=>{if(e.target.closest('[data-tab-link]'))showTab('manifest');else if(e.target.closest('[data-clear-override]')&&confirm('Clear the manifest override? The service goes back to the manifest the game sent.'))clearOverride();});
