@@ -14,6 +14,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import uvicorn
@@ -32,7 +33,6 @@ MAX_BODY = 262144
 SCALAR_TYPES = ('number', 'boolean', 'string', 'vector2', 'vector3', 'entity_ref')
 CACHEABLE = ('number', 'boolean', 'string')
 REPORT_STATUSES = ('executed', 'blocked', 'expired')
-MAX_SLOTS = 8
 TYPE_KEYS = {'description', 'fields', 'actions', 'decisions', 'events', 'decision_ttl_ms', 'refresh_ms', 'perception_radius', 'max_input_tokens', 'cache'}
 CHARS_PER_TOKEN = 4  # token estimate used for max_input_tokens
 SLOTS = threading.BoundedSemaphore(4)  # replaced at startup from A2G_PROVIDER_CALLS
@@ -223,8 +223,8 @@ def check_cache(cache, fields, world_fields, name):
 
 def check_slots(slots, name):
     """Decision slots: named, independent choices of one entity, each with its own actions."""
-    if not isinstance(slots, dict) or not 0 < len(slots) <= MAX_SLOTS:
-        raise ValueError('%s.decisions needs 1-%d slots' % (name, MAX_SLOTS))
+    if not isinstance(slots, dict) or not slots:  # no cap: a game declares as many independent choices as it has
+        raise ValueError('%s.decisions needs at least one slot' % name)
     clean = {}
     for slot, spec in slots.items():
         monitor.key(slot, 40)
@@ -524,6 +524,44 @@ def budget_warnings(manifest):
     return warnings
 
 
+def ask_chunk(chunk, manifest, world, scope_state, chain, memories, shared, contexts):
+    """One provider call for [(entity, slot)]. Returns ({(id, slot): answer}, {(id, slot): fallback result}, error, cost, called)."""
+    entities = list({entity['id']: entity for entity, _ in chunk}.values())
+    payload, _, names = build_payload(manifest, world, scope_state, chain, entities, memories, shared, contexts)
+    wanted = {(entity['id'], slot) for entity, slot in chunk}
+    payload['questions'] = [question for question in payload['questions'] if names[question['name']] in wanted]
+    code, error, answers, cost, called = None, None, {}, None, False
+    locked = SLOTS.acquire(blocking=False)
+    try:
+        if not locked:
+            code, error = 'busy', 'Service at capacity'
+        elif not os.environ.get(provider()['key']):
+            code, error = 'unavailable', 'Provider key missing'
+        else:
+            called = True
+            answers, cost = ask_provider(payload)
+    except urllib.error.HTTPError as failure:
+        code, error = 'unavailable', 'Provider HTTP %d' % failure.code
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError):
+        code, error = 'unavailable', 'Provider unavailable, timed out or returned an invalid reply'
+    finally:
+        if locked:
+            SLOTS.release()
+    if code:
+        return {}, {unit: {'code': code, 'reason': error[:200]} for unit in wanted}, error, None, called
+    return {names[name]: answer for name, answer in answers.items() if name in names}, {}, None, cost, called
+
+
+def add_costs(total, cost):
+    """Sum provider costs of several calls into one record."""
+    if not cost:
+        return total
+    if not total:
+        return dict(cost)
+    return dict(total, input_tokens=total['input_tokens'] + cost['input_tokens'], output_tokens=total['output_tokens'] + cost['output_tokens'],
+                usd=total['usd'] + cost['usd'], priced=total['priced'] and cost['priced'])
+
+
 def unit(value):
     return round(min(1, max(0, value)), 3) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
 
@@ -574,35 +612,28 @@ def decide(identity, manifest, digest, world, scope, scope_state, chain, entitie
         ask.append(entity)
     error, cost, called = None, None, False
     if ask:
-        if len(ask) < len(entities):
-            payload, _, names = build_payload(manifest, world, scope_state, chain, ask, memories, shared, contexts)
-        answers, code = {}, None
-        locked = SLOTS.acquire(blocking=False)
-        try:
-            if not locked:
-                code, error = 'busy', 'Service at capacity'
-            elif not os.environ.get(provider()['key']):
-                code, error = 'unavailable', 'Provider key missing'
-            else:
-                called = True
-                answers, cost = ask_provider(payload)
-        except urllib.error.HTTPError as failure:
-            code, error = 'unavailable', 'Provider HTTP %d' % failure.code
-        except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError):
-            code, error = 'unavailable', 'Provider unavailable, timed out or returned an invalid reply'
-        finally:
-            if locked:
-                SLOTS.release()
-        by_entity = {}
-        for name, (entity_id, slot) in names.items():
-            by_entity.setdefault(entity_id, {})[slot] = answers.get(name, {})
+        # One question per entity and slot. A batch with more questions than one provider call should carry is split
+        # into several calls in parallel (by question, keeping each call's input to the entities it asks about).
+        units = [(entity, slot) for entity in ask for slot in legal_slots(entity)]
+        size = max(1, int(os.environ.get('A2G_QUESTIONS_PER_CALL') or 64))
+        calls = [units[start:start + size] for start in range(0, len(units), size)]
+        if len(calls) == 1:
+            outcomes = [ask_chunk(calls[0], manifest, world, scope_state, chain, memories, shared, contexts)]
+        else:
+            with ThreadPoolExecutor(max_workers=len(calls)) as pool:
+                outcomes = list(pool.map(lambda chunk: ask_chunk(chunk, manifest, world, scope_state, chain, memories, shared, contexts), calls))
+        answers, failed = {}, {}
+        for chunk_answers, chunk_failed, chunk_error, chunk_cost, chunk_called in outcomes:
+            answers.update(chunk_answers)
+            failed.update(chunk_failed)
+            error = error or chunk_error
+            cost = add_costs(cost, chunk_cost)
+            called = called or chunk_called
         for entity in ask:
             spec = manifest['entity_types'][entity['type']]
-            if code:
-                results[entity['id']] = fallback(entity, spec, code, error)
-                continue
             slots = slots_of(spec)
-            outcome = {slot: slot_result(by_entity.get(entity['id'], {}).get(slot, {}), legal, slots[slot]) for slot, legal in legal_slots(entity).items()}
+            outcome = {slot: failed.get((entity['id'], slot)) or slot_result(answers.get((entity['id'], slot), {}), legal, slots[slot])
+                       for slot, legal in legal_slots(entity).items()}
             decided = [result for result in outcome.values() if 'action' in result]
             if not decided:  # nothing usable: the whole entity falls back with the first slot's reason
                 first = next(iter(outcome.values()))
@@ -652,7 +683,7 @@ def handle(path, data):
         if status not in REPORT_STATUSES or not isinstance(data.get('decision_id'), str) or not 0 < len(data['decision_id']) <= 128:
             raise ValueError('Report needs decision_id and status executed, blocked or expired')
         actions = data.get('actions')
-        if (data.get('action') is None) == (actions is None) or (actions is not None and (not isinstance(actions, dict) or len(actions) > MAX_SLOTS)):
+        if (data.get('action') is None) == (actions is None) or (actions is not None and not isinstance(actions, dict)):
             raise ValueError('Report needs either action or actions (one action per decision slot)')
         action = monitor.key(data['action'], 40) if actions is None else {monitor.key(slot, 40): monitor.key(value, 40) for slot, value in actions.items()}
         monitor.report(identity, monitor.key(data.get('entity_id')), data['decision_id'], action, status,

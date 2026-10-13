@@ -6,14 +6,14 @@ The service holds the provider key; it is never sent to the game or the console.
 
 | Service | Protocol | Runtime |
 | --- | --- | --- |
-| `0.1.0` | `0.1` | Docker, or Python 3.12+ |
+| `0.1.1` | `0.1` | Docker, or Python 3.12+ |
 
 ## Run
 
 With Docker, using the published image (amd64 and arm64):
 
 ```sh
-docker run -d --name a2g -p 127.0.0.1:8787:8787 -v a2g-data:/data -e TYPESAFE_API_KEY=... -e A2G_PROVIDER=jev ghcr.io/agent2game/a2g-service:0.1.0
+docker run -d --name a2g -p 127.0.0.1:8787:8787 -v a2g-data:/data -e TYPESAFE_API_KEY=... -e A2G_PROVIDER=jev ghcr.io/agent2game/a2g-service:0.1.1
 ```
 
 Or from this repository: `cp .env.example .env`, put a provider key in it, then `docker compose up -d --build`. Without Docker: `pip install -r requirements.txt`, then `python3 decision_service.py`.
@@ -33,6 +33,7 @@ Environment variables (in Docker with `-e`, or in `.env`; the process environmen
 | `A2G_ALLOWED_ORIGINS` | Exact loopback origins of browser games on local dev servers, comma-separated, for example `http://localhost:5173` |
 | `A2G_CONSOLE` | `off` serves only `/v1/*` and `/health` |
 | `A2G_PROVIDER_CALLS` | Concurrent provider calls (default 16) |
+| `A2G_QUESTIONS_PER_CALL` | Questions per provider call (default 64); bigger batches, for example entities with many decision slots, are split into parallel calls |
 | `A2G_PORT`, `A2G_DB` | Listen port (default 8787) and SQLite file (Docker: `/data/a2g.db` in the volume) |
 
 What it implements, its limits and the status of every protocol feature: [Reference service](https://agent2game.org/implementations/service/).

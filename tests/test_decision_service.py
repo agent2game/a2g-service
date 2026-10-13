@@ -96,6 +96,27 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual((again['cached'], again['slots']['concern']['action']), (True, 'none'))
         self.assertEqual(urlopen.call_count, 2)
 
+    @patch.dict('os.environ', {'OPENAI_API_KEY': 'test-only', 'A2G_QUESTIONS_PER_CALL': '16'})
+    @patch('decision_service.urllib.request.urlopen')
+    def test_many_slots_are_split_across_provider_calls(self, urlopen):
+        slots = {'s%02d' % i: {'actions': {'none': 'Nothing', 'act': 'Do it'}} for i in range(40)}  # no cap on slots
+        manifest = {'entity_types': {'worker': {'description': 'Busy.', 'decisions': slots}}}
+        service.handle('/v1/session', {'a2g': '0.1', 'client_id': 'many', 'manifest': manifest})
+        calls = []
+        def reply(request, timeout):
+            questions = json.loads(request.data)['questions']
+            calls.append(len(questions))
+            if len(questions) == 8:
+                raise TimeoutError()  # the last, smaller call fails: only its slots fall back
+            return provider_reply(*[{'name': q['name'], 'type': 'choice', 'choice': 'act', 'confidence': 0.9} for q in questions])
+        urlopen.side_effect = reply
+        entity = {'id': 'w1', 'type': 'worker', 'observation': {}, 'legal_actions': {slot: ['none', 'act'] for slot in slots}}
+        decision = service.handle('/v1/decide', {'client_id': 'many', 'epoch': 1, 'world': {}, 'entities': [entity]})[1]['decisions'][0]
+        self.assertEqual(sorted(calls), [8, 16, 16])
+        decided = [slot for slot, result in decision['slots'].items() if result.get('action') == 'act']
+        failed = [slot for slot, result in decision['slots'].items() if result.get('code') == 'unavailable']
+        self.assertEqual((len(decided), len(failed), decision['source']), (32, 8, 'AI'))
+
     def test_budget_warning(self):
         tight = copy.deepcopy(MANIFEST)
         tight['entity_types']['guard']['max_input_tokens'] = 60
