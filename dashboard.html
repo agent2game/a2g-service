@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agent2Game Console</title>
+<style>
+:root{color-scheme:dark;--bg:#101c2c;--panel:#19283b;--line:#30435b;--ink:#edf2f7;--muted:#a9b6c2;--accent:#76b7d4;--good:#79d7ab;--warn:#eebc6b;--bad:#ee8590;--sel:#22384f;--tip:#0b1420}
+@media(prefers-color-scheme:light){:root{color-scheme:light;--bg:#f3f6f9;--panel:#fff;--line:#d2dbe4;--ink:#16222e;--muted:#5a6773;--accent:#2b7aa0;--good:#1c8655;--warn:#a2660a;--bad:#c23a48;--sel:#e2eef6;--tip:#16222e}}
+*{box-sizing:border-box}html,body{overflow-x:hidden}body{margin:0;background:var(--bg);color:var(--ink);font:14px Verdana,sans-serif}
+h1,h2,h3,h4{font-family:"Trebuchet MS",sans-serif;margin:0;font-weight:normal}h1{font-size:18px}h2{font-size:20px}h3{font-size:15px}
+h4{font-size:11px;margin:16px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+button,select,input{font:inherit;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:7px 10px}button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.muted{color:var(--muted);font-size:12px}.good{color:var(--good)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.badge{display:inline-block;font:11px Menlo,monospace;border:1px solid var(--line);padding:2px 6px;border-radius:3px;white-space:nowrap}
+.badge.info{color:var(--accent);border-color:var(--accent)}.badge.good{border-color:var(--good)}.badge.warn{border-color:var(--warn)}.badge.bad{border-color:var(--bad)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px}.dot.good{background:var(--good)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+/* hover help: <span class="tip" data-tip="…">i</span> */
+.tip{position:relative;display:inline-grid;place-items:center;width:15px;height:15px;margin-left:5px;border:1px solid var(--muted);border-radius:50%;font:10px Georgia,serif;color:var(--muted);cursor:help;vertical-align:1px;text-transform:none;letter-spacing:0;font-weight:normal}
+.tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;z-index:20;left:-8px;top:22px;width:max-content;max-width:280px;padding:8px 10px;border-radius:5px;background:var(--tip);color:#edf2f7;font:12px/1.5 Verdana,sans-serif;white-space:normal;text-align:left;box-shadow:0 4px 14px #0006}
+header{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header .client-pick{display:flex;align-items:center;gap:8px;flex:1;min-width:260px;flex-wrap:wrap}header select{flex:1;min-width:220px;max-width:520px}header label{flex-shrink:0}
+header label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;white-space:nowrap}
+#spend{margin-left:auto}#service{font-size:12px;text-align:right}
+main{padding:20px 24px;max-width:1600px;margin:0 auto}.empty{padding:80px 18px;color:var(--muted);text-align:center;line-height:1.7}
+.intro{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}.subtitle{color:var(--muted);font-size:12px;margin-top:6px;overflow-wrap:anywhere}
+.meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:18px 0 20px;overflow-x:auto}
+.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:10px 16px;color:var(--muted);white-space:nowrap}.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:20px}
+.metric{padding:14px;border:1px solid var(--line);background:var(--panel);border-radius:5px;min-width:0}.metric>span{display:block;color:var(--muted);font-size:12px;margin-bottom:8px}.metric strong{font:18px Menlo,monospace;font-weight:normal;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.metric small{display:block;color:var(--muted);font-size:11px;margin-top:6px;overflow-wrap:anywhere}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.card{border:1px solid var(--line);border-radius:5px;background:var(--panel);min-width:0;margin-bottom:20px}
+.card-head{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.card-body{padding:14px 16px}
+.hint{color:var(--muted);font-size:12px;line-height:1.6;margin:0 0 10px}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 16px;margin:0;font-size:12px}.kv dt{color:var(--muted)}.kv dd{margin:0;font-family:Menlo,monospace;overflow-wrap:anywhere}
+.nested{margin-top:4px;padding-left:10px;border-left:2px solid var(--line)}
+.alert{padding:10px 14px;border:1px solid var(--bad);border-radius:5px;color:var(--bad);font-size:12px;margin-bottom:20px;overflow-wrap:anywhere}
+.type{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}.type:first-of-type{border-top:0;margin-top:0;padding-top:0}.type p{font-size:12px;line-height:1.6;margin:6px 0}
+.types{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.types>.card{margin:0}.types p{font-size:12px;line-height:1.6;margin:0 0 6px;overflow-wrap:anywhere}
+.scope{padding:10px 12px;border:1px solid var(--line);border-radius:5px;margin-bottom:8px}.scope.active{border-color:var(--good);box-shadow:inset 3px 0 var(--good)}.scope.chain{border-color:var(--accent);box-shadow:inset 3px 0 var(--accent)}
+.scope p,.profile p{font-size:12px;line-height:1.6;margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}.scope-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.profile{border-top:1px solid var(--line);padding:10px 0}.profile:first-child{border-top:0;padding-top:0}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:4px;max-width:220px}.bar>i{display:block;height:100%;background:var(--good)}.bar.warn>i{background:var(--warn)}.bar.bad>i{background:var(--bad)}
+pre{font:12px/1.6 Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere;margin:0;color:var(--muted)}
+.split{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:20px;align-items:start}.split .card{margin-bottom:0}.sticky{position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto}
+.scroll{overflow:auto}table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums}
+th{color:var(--muted);font-weight:normal;text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}th.group{text-align:center;border-left:1px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding-bottom:4px}td.first-obs,th.first-obs{border-left:1px solid var(--line)}
+td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:middle}tbody tr{cursor:pointer}tbody tr:hover{background:var(--sel)}tbody tr.selected{background:var(--sel);box-shadow:inset 3px 0 var(--accent)}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toolbar input{width:190px}.toolbar input[type=checkbox]{width:auto;padding:0}.toolbar label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.timeline{list-style:none;margin:0;padding:0;font-size:12px}.timeline li{padding:10px 0;border-top:1px solid var(--line);line-height:1.7;overflow-wrap:anywhere}.timeline li:first-child{border-top:0;padding-top:0}
+.timeline .outcome{font-family:Menlo,monospace;color:var(--muted)}
+.logs details{border-top:1px solid var(--line)}.logs details:first-child{border-top:0}.logs summary{padding:9px 16px;cursor:pointer;font-size:12px;line-height:1.6;overflow-wrap:anywhere}.logs summary time{display:inline-block;color:var(--muted);font:11px Menlo,monospace;min-width:80px}.logs details pre{padding:0 16px 12px 112px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin:0 0 10px}
+footer{color:var(--muted);font-size:11px;line-height:1.7;margin-top:10px}
+.seg{display:inline-flex}.seg button{padding:3px 8px;font-size:11px;color:var(--muted);border-radius:0}.seg button:first-child{border-radius:4px 0 0 4px}.seg button:last-child{border-radius:0 4px 4px 0;margin-left:-1px}.seg button[aria-pressed=true]{background:var(--sel);color:var(--ink);border-color:var(--accent);position:relative}
+pre.json{color:var(--ink)}.banner{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 14px;border:1px solid var(--warn);border-radius:5px;color:var(--warn);font-size:12px;line-height:1.6;margin-top:16px}.banner span{flex:1;min-width:240px}
+#manifest-text{width:100%;min-height:60vh;font:12px/1.5 Menlo,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:10px;resize:vertical}
+.tip.flip:hover::after,.tip.flip:focus::after{left:auto;right:-8px}
+@media(max-width:1100px){.cols,.split{grid-template-columns:minmax(0,1fr)}.sticky{position:static;max-height:none}}
+@media(max-width:700px){header{padding:10px 14px}#service{margin-left:0;text-align:left}main{padding:14px}.logs details pre{padding-left:16px}.toolbar input{width:140px}.types{grid-template-columns:minmax(0,1fr)}}
+</style></head><body>
+<header>
+ <h1>Agent2Game Console</h1>
+ <div class="client-pick"><select id="clients" aria-label="Game client"><option value="">Waiting for game clients…</option></select>
+  <label><input type="checkbox" id="follow" checked> Follow latest<span class="tip" tabindex="0" data-tip="Automatically switch to the most recently active game client (for example after you restart the game). Picking a client manually turns this off.">i</span></label>
+  <button id="delete" type="button" title="Delete the selected session from the console and the database">Delete</button><button id="prune" type="button">Delete offline</button><span class="tip" tabindex="0" data-tip="Removes old sessions from the console and the local database. Their provider spend stays in the all-time total. A running game cannot be deleted; stop it first.">i</span></div>
+ <label class="provider-pick">Provider <select id="provider" aria-label="Decision provider" style="flex:none;min-width:0"></select><span class="tip" tabindex="0" data-tip="Which decision provider answers /v1/decide for every game. Saved in the local database and kept across restarts; it overrides A2G_PROVIDER. Takes effect on the next decision batch.">i</span></label>
+ <div id="spend" class="muted"></div>
+ <div id="service">Connecting…</div>
+</header>
+<main>
+<div id="empty" class="empty"><h2>No game client yet</h2><p>Start a game with the A2G SDK. It appears here after its first session or telemetry message.<br>The console refreshes every second.</p></div>
+<div id="detail" hidden>
+ <div class="intro"><div><h2 id="name"></h2><div class="subtitle" id="identity"></div><div class="meta" id="meta"></div></div><div class="toolbar"><span class="badge" id="connection"></span><button id="pause" type="button">Pause display</button><span class="tip" tabindex="0" data-tip="Freezes this page only. The game and the service keep running.">i</span></div></div>
+ <div id="override-banner"></div>
+ <nav class="tabs" role="tablist">
+  <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
+  <button role="tab" data-tab="entities" aria-selected="false" id="tab-entities">Entities</button>
+  <button role="tab" data-tab="context" aria-selected="false" id="tab-context">Context</button>
+  <button role="tab" data-tab="manifest" aria-selected="false" id="tab-manifest">Manifest</button>
+  <button role="tab" data-tab="logs" aria-selected="false" id="tab-logs">Logs</button>
+ </nav>
+
+ <section data-panel="overview">
+  <div id="last-error"></div>
+  <div class="metrics" id="metrics"></div>
+  <div class="cols">
+   <div class="card"><div class="card-head"><h3>Cost<span class="tip" tabindex="0" data-tip="Estimated from the token usage each provider call reports, multiplied by list prices (regional or long-context premiums are not applied). Calls that failed or timed out report no usage and are not counted. Stored in the local database, so totals survive service restarts.">i</span></h3><div class="toolbar"><small class="muted">this client</small><span data-toggle="cost"></span></div></div><div class="card-body" id="cost"></div></div>
+   <div class="card"><div class="card-head"><h3>Fallbacks by code<span class="tip" tabindex="0" data-tip="Entity decisions without a usable answer, grouped by the reason code the service returned. For each of them the game ran its native AI.">i</span></h3><div class="toolbar"><small class="muted" id="fallback-count"></small><span data-toggle="fallbacks"></span></div></div><div class="card-body" id="fallbacks"></div></div>
+   <div class="card"><div class="card-head"><h3>Population<span class="tip" tabindex="0" data-tip="Computed by A2G from telemetry: how many entities of each type are alive in the current scene versus how many were seen since the scene started. Sent to the model with every decision.">i</span></h3><div class="toolbar"><small class="muted">current scene</small><span data-toggle="population"></span></div></div><div class="card-body" id="population"></div></div>
+   <div class="card"><div class="card-head"><h3>World state<span class="tip" tabindex="0" data-tip="Shared facts the game sends with every telemetry and decision request (manifest world_fields). Every entity's decision sees these.">i</span></h3><div class="toolbar"><small class="muted" id="world-count"></small><span data-toggle="world-state"></span></div></div><div class="card-body" id="world"></div></div>
+  </div>
+ </section>
+
+ <section data-panel="entities" hidden>
+  <div class="split">
+   <div class="card"><div class="card-head"><h3>Entities<span class="tip" tabindex="0" data-tip="Every object the game reports in its latest telemetry. Click a row to see its observation, current decision, context, memory and logs.">i</span></h3><div class="toolbar"><small class="muted" id="entity-count"></small><label><input type="checkbox" id="group-view"> Group by parent<span class="tip" tabindex="0" data-tip="Show group members indented under their parent entity (a squad, crowd or formation leader). Links come from decision requests and telemetry.">i</span></label><select id="type-filter" aria-label="Entity type"><option value="">All types</option></select></div></div>
+    <div class="scroll"><table><thead id="entity-head"></thead><tbody id="entities"></tbody></table></div></div>
+   <div class="card sticky"><div class="card-head"><div><h3 id="entity-title">Entity</h3><small class="muted" id="entity-sub"></small></div><span data-toggle="entity"></span></div><div class="card-body" id="entity"></div></div>
+  </div>
+ </section>
+
+ <section data-panel="context" hidden><div id="context"></div></section>
+
+ <section data-panel="manifest" hidden>
+  <div class="card"><div class="card-head"><h3>Manifest editor<span class="tip" tabindex="0" data-tip="Edit the manifest as JSON. Download saves it as a file to put in the game (for Lango: a2g_manifest.json). Apply as override makes the service use it for every session of this game right away, without restarting the game, and keeps it across service restarts until you clear it.">i</span></h3><span id="manifest-state"></span></div>
+   <div class="card-body"><p class="hint">Safe to change in an override: texts, descriptions, action and event descriptions, scopes, profiles, budgets, cache rules and timings. Renaming or removing fields, actions or events the game sends makes its requests invalid until the game ships the same manifest.</p>
+    <div class="toolbar" style="margin-bottom:10px"><button id="m-format" type="button">Format</button><button id="m-validate" type="button">Validate</button><button id="m-download" type="button">Download</button><button id="m-apply" type="button">Apply as override</button><button id="m-clear" type="button" hidden>Clear override</button><button id="m-discard" type="button">Discard edits</button><small class="muted" id="manifest-status" role="status"></small></div>
+    <textarea id="manifest-text" spellcheck="false" aria-label="Manifest JSON"></textarea></div></div>
+ </section>
+
+ <section data-panel="logs" hidden>
+  <div class="card"><div class="card-head"><h3>Event log</h3><div class="toolbar"><select id="filter" aria-label="Log kind"></select><input id="search" placeholder="Search events" aria-label="Search events"></div></div>
+   <div class="card-body" style="padding-bottom:0"><div class="legend" id="legend"></div></div><div class="logs" id="logs"></div></div>
+ </section>
+ <footer>Agent2Game Console (local). Session summaries, provider spend and manifest overrides are stored in a2g-poc/a2g.db (SQLite). Telemetry, memory and logs stay in memory (32 clients, 300 events per client, 8 memory entries per entity) and a restart clears them.</footer>
+</div>
+</main>
+<script>
+'use strict';
+const KINDS={
+ request:'The game asked for decisions for a batch of entities.',
+ decision:'An entity got an action, from the model or from the decision cache (marked cached).',
+ error:'A fallback (with its code), a failed batch or an ignored report. For fallbacks the game ran its native AI.',
+ report:'The game reported how a decision ended (executed, blocked or expired) and what changed.',
+ execution:'An entity changed its in-game state (seen in telemetry).',
+ state:'Client mode, scene, scope, pause or error changed, or an entity left.',
+ context:'The game replaced or removed scopes or profiles during the session (/v1/context).',
+ session:'The game (re)started a session and sent its manifest.',
+ connected:'The service saw this client for the first time.'};
+const CODES={
+ unavailable:'Provider error, timeout or missing credentials. Native AI; the game retries on its next refresh.',
+ busy:'The service was at capacity (too many provider calls in flight). Native AI; retry later.',
+ refused:'The model declined to choose an action.',
+ invalid_choice:'The model answered outside the legal actions, or not at all.',
+ budget:'The entity\'s own input was estimated above its type\'s max_input_tokens. The game should send less context.'};
+const FIELD_TYPES={number:'number',boolean:'yes / no',string:'text',vector2:'vector2 (x, y)',vector3:'vector3 (x, y, z)',entity_ref:'entity reference (id)'};
+const n=v=>typeof v==='number'&&Number.isFinite(v)?v:null;
+const share=(a,b)=>n(a)!=null&&n(b)?' ('+Math.round(100*a/b)+'%)':'';
+const METRICS=[
+ ['Control mode',c=>c.t.mode==='ai'?'AI':c.t.mode==='native'?'Native game AI':c.t.mode,'Who drives the entities. AI: the game executes model decisions. Native: the game\'s own AI; no decisions are requested.'],
+ ['Scene',c=>c.t.scene??c.c.scene,'The level or scene currently loaded in the game.'],
+ ['Active scope',c=>{const sc=c.t.scope??c.c.scope;if(sc==null)return '—';const ch=scopeChain(obj(obj(c.c.manifest).scopes),sc);return [sc,ch.length>1?ch.join(' › '):null];},'The scope (area, phase, mission…) the game says it is in. Its text and the texts of its parent chain are sent with every decision. Details in the Context tab.'],
+ ['Paused',c=>c.t.paused==null?'—':c.t.paused?'yes':'no','Whether the game is paused. Telemetry continues while paused.'],
+ ['Decision batches',c=>c.s.batches,'Calls to /v1/decide. Each batch can cover up to 16 entities.'],
+ ['Entities decided',c=>c.s.questions,'Total entity decisions requested across all batches (one question per entity).'],
+ ['AI decisions',c=>c.s.ai,'Entity decisions answered with a legal action, by the model or from the decision cache.'],
+ ['Cache hits',c=>n(c.s.cached)==null?'—':[c.s.cached+' / '+fmt(c.s.ai)+share(c.s.cached,c.s.ai),'of AI decisions'],'AI decisions reused from the decision cache instead of asking the model. Only entity types with a cache rule in the manifest can hit it.'],
+ ['Provider calls',c=>n(c.s.provider_calls)==null?'—':[c.s.provider_calls,'for '+fmt(c.s.questions)+' decisions'+(n(c.s.batches)!=null?' · '+Math.max(0,c.s.batches-c.s.provider_calls)+' batches made no call':'')],'Requests actually sent to the model provider. A batch makes no call when every entity in it was answered from the cache, was over its token budget, or the service was busy.'],
+ ['Fallbacks',c=>fmt(c.s.fallback)+share(c.s.fallback,c.s.questions),'Entity decisions without a usable answer. The game ran its native AI for them. Breakdown by code below.'],
+ ['Outcome reports',c=>c.s.reports,'Reports from the game on how decisions ended. They feed each entity\'s memory.'],
+ ['Ignored reports',c=>c.s.reports_ignored,'Reports the service dropped because the decision_id was unknown, issued to another entity or session, or already reported. Fake or repeated reports cannot change memory.'],
+ ['Context updates',c=>c.s.context_updates,'How often the game replaced or removed scopes or profiles mid-session (/v1/context). History in the Context tab.'],
+ ['Waiting for reply',c=>c.s.pending,'Decision batches sent to the service that have not returned yet.'],
+ ['Estimated cost',c=>usd(obj(c.c.cost).usd),'Provider spend for this client since the service started. Details in the Cost card below.'],
+ ['Last batch latency',c=>c.s.latency_ms==null?'—':c.s.latency_ms+' ms','Service-side time of the most recent decision batch, including the provider call.']];
+let clients=[],selected=null,selectedEntity=null,latest=null,displayPaused=false,busy=false,tab=(location.hash.slice(1)||'overview'),contextSig='',typesSig='',lastLogs='',service={};
+const $=id=>document.getElementById(id);
+const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
+const arr=v=>Array.isArray(v)?v:[];
+// DOM builder: all text goes through text nodes / setAttribute, never innerHTML (payloads come from game clients).
+function h(tag,props,...kids){const e=document.createElement(tag);for(const[k,v]of Object.entries(props||{})){if(v==null||v===false)continue;if(k==='class')e.className=v;else e.setAttribute(k,v===true?'':String(v));}for(const k of kids.flat(Infinity))if(k!=null&&k!==false)e.append(k instanceof Node?k:String(k));return e;}
+const fmt=v=>typeof v==='number'?(Number.isFinite(v)?String(Math.round(v*100)/100):'—'):typeof v==='boolean'?(v?'yes':'no'):v==null||v===''?'—'
+ :Array.isArray(v)?(v.length&&v.every(x=>typeof x==='number')?'('+v.map(fmt).join(', ')+')':'['+v.map(x=>x&&typeof x==='object'?JSON.stringify(x):fmt(x)).join(', ')+']'):typeof v==='object'?JSON.stringify(v):String(v);
+const tone=s=>['AI','online','executed','decision','ai','active'].includes(s)?'good':['FALLBACK','stale','pending','expired','request'].includes(s)?'warn':['offline','blocked','error'].includes(s)?'bad':['cached','context','session'].includes(s)?'info':'';
+const badge=(v,cls)=>h('span',{class:'badge '+(cls??tone(v))},fmt(v));
+const tip=text=>h('span',{class:'tip',tabindex:0,'data-tip':text},'i');
+const pct=c=>typeof c==='number'?Math.round(c*100)+'%':'—';
+const ago=at=>{if(typeof at!=='number')return '—';const s=Math.max(0,Date.now()/1000-at);return s<60?s.toFixed(0)+' s ago':s<3600?(s/60).toFixed(0)+' min ago':(s/3600).toFixed(1)+' h ago';};
+const usd=v=>typeof v!=='number'?'—':v===0?'$0':v<0.01?'$'+v.toFixed(6):'$'+v.toFixed(4);
+const tokens=v=>typeof v==='number'?v.toLocaleString():'—';
+const ms=v=>n(v)==null?'—':v>=1000?fmt(v/1000)+' s':v+' ms';
+const shortId=v=>typeof v!=='string'?'—':v.length>14?v.slice(0,12)+'…':v;
+const shortHash=v=>typeof v!=='string'?'—':v.length>20?v.slice(0,v.indexOf(':')+1+10)+'…':v;
+const time=at=>typeof at==='number'?new Date(at*1000).toLocaleTimeString():'—';
+function schema(k){
+ if(Array.isArray(k))return 'one of: '+k.map(x=>typeof x==='string'?x:fmt(x)).join(', ');
+ const o=obj(k);if(o.list)return h('div',null,'list of up to '+fmt(o.max)+', each:',h('div',{class:'nested'},kv(o.list,schema)));
+ return typeof k==='string'?(FIELD_TYPES[k]||k):fmt(k);}
+function kv(o,map=fmt){const e=Object.entries(obj(o));return e.length?h('dl',{class:'kv'},e.map(([k,v])=>[h('dt',null,k),h('dd',null,map(v))])):h('div',{class:'muted'},'None.');}
+function rows(list){return h('dl',{class:'kv'},list.filter(Boolean).map(([k,v,help])=>[h('dt',null,k,help?tip(help):null),h('dd',null,v)]));}
+function decisionAge(d){return typeof d.age_ms==='number'?d.age_ms+(Number(latest?.age_seconds)||0)*1000:null;}
+function scopeChain(scopes,name){const chain=[],seen=new Set();while(name!=null&&!seen.has(name)&&scopes[name]){seen.add(name);chain.unshift(name);name=obj(scopes[name]).parent;}return chain;}
+// Latest decision payload per entity from the event log (adds cached flag and fallback code to telemetry decisions).
+function decisionLog(logs){const m={};for(const l of arr(logs)){const x=obj(l),p=obj(x.payload);if(x.entity!=null&&(p.source==='AI'||p.source==='FALLBACK'))m[x.entity]=p;}return m;}
+function sourceBadges(d,ld){if(!d.source)return null;ld=obj(ld);
+ const code=d.code??(d.source==='FALLBACK'&&ld.source==='FALLBACK'?ld.code:null);
+ const cached=d.cached===true||(d.source==='AI'&&ld.source==='AI'&&ld.cached===true&&(d.decision_id?ld.decision_id===d.decision_id:ld.action===d.action));
+ return [d.source==='FALLBACK'&&code?badge('FALLBACK · '+fmt(code),'warn'):badge(d.source),cached?[' ',badge('cached','info')]:null];}
+function tokenBar(used,max){if(n(used)==null)return h('span',{class:'muted'},'—');if(!n(max))return tokens(used)+' (no budget set)';const r=used/max;
+ return h('div',null,tokens(used)+' of '+tokens(max),h('div',{class:'bar '+(r>1?'bad':r>0.8?'warn':'good')},h('i',{style:'width:'+Math.min(100,Math.max(2,Math.round(r*100)))+'%'})));}
+
+/* ---------- pretty / JSON views ---------- */
+let views={};try{views=JSON.parse(localStorage.getItem('a2g-views')||'{}');}catch{}
+const viewMode=id=>views[id]==='json'?'json':'pretty';
+const viewToggle=id=>h('span',{class:'seg',role:'group','aria-label':'View as'},['pretty','json'].map(m=>h('button',{type:'button','data-view':id,'data-mode':m,'aria-pressed':String(viewMode(id)===m)},m==='json'?'JSON':'Pretty')));
+// Pretty view (built lazily) or the raw data as JSON, per card.
+const shown=(id,pretty,raw)=>viewMode(id)==='json'?h('pre',{class:'json'},JSON.stringify(raw??null,null,2)):pretty();
+document.querySelectorAll('[data-toggle]').forEach(e=>e.replaceChildren(viewToggle(e.dataset.toggle)));
+document.addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(!b)return;const id=b.dataset.view;views[id]=b.dataset.mode;try{localStorage.setItem('a2g-views',JSON.stringify(views));}catch{}
+ document.querySelectorAll('[data-view="'+CSS.escape(id)+'"]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.mode===views[id])));contextSig='\0';if(latest)render(latest);});
+
+/* ---------- tabs ---------- */
+const TABS=['overview','entities','context','manifest','logs'];
+function showTab(name){if(!TABS.includes(name))name='overview';tab=name;history.replaceState(null,'','#'+name);
+ document.querySelectorAll('[role=tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===name)));
+ document.querySelectorAll('[data-panel]').forEach(p=>p.hidden=p.dataset.panel!==name);if(latest)render(latest);}
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b)showTab(b.dataset.tab);});
+
+/* ---------- overview ---------- */
+function renderOverview(c){const t=obj(c.telemetry),s=obj(c.stats);
+ $('last-error').replaceChildren(...(t.last_error?[h('div',{class:'alert'},'Last client error: '+t.last_error)]:[]));
+ $('metrics').replaceChildren(...METRICS.map(([label,get,help])=>{const v=get({t,s,c});const[main,sub]=Array.isArray(v)?v:[v];
+  return h('div',{class:'metric'},h('span',null,label,tip(help)),h('strong',null,fmt(main)),sub?h('small',null,sub):null);}));
+ renderCost(c);renderFallbacks(s);
+ $('population').replaceChildren(shown('population',()=>population(c.population),c.population));
+ $('world-count').textContent=Object.keys(obj(t.world)).length+' fields';$('world').replaceChildren(shown('world-state',()=>kv(t.world),t.world));}
+
+function renderCost(c){const k=obj(c.cost),s=obj(c.stats),codes=obj(s.fallback_codes),hours=Math.max(1/60,(Date.now()/1000-(c.first_seen||Date.now()/1000))/3600);
+ const perDecision=s.questions?k.usd/s.questions:null;
+ // Decisions the provider actually answered (paid): AI minus cache hits, plus refusals and invalid answers.
+ const paid=(n(s.ai)??0)-(n(s.cached)??0)+(n(codes.refused)??0)+(n(codes.invalid_choice)??0),perPaid=paid>0&&n(k.usd)!=null?k.usd/paid:null;
+ $('cost').replaceChildren(...(viewMode('cost')==='json'?[shown('cost',null,k)]:[rows([
+  ['total',usd(k.usd)],
+  ['provider calls',tokens(k.calls)],
+  ['input / output tokens',tokens(k.input_tokens)+' / '+tokens(k.output_tokens)],
+  ['avg tokens per call',k.calls?tokens(Math.round(k.input_tokens/k.calls)):'—','Grows with the number of entities per batch, the world, scope and profile texts, and memory length.'],
+  ['per 1,000 entity decisions',perDecision==null?'—':usd(perDecision*1000)],
+  ['at this pace, per hour',usd(k.usd/hours),'Total spend divided by the time since this client first connected.'],
+  n(s.cached)!=null&&['saved by cache (estimate)',n(s.cached)&&perPaid!=null?'≈ '+usd(s.cached*perPaid)+' · '+s.cached+' decisions':s.cached?'—':'$0','Rough estimate: cache hits × average cost of a decision the provider actually answered. Real savings depend on batch sizes.'],
+  k.unpriced_calls?['unpriced calls',h('span',{class:'warn'},k.unpriced_calls+' (no price for that provider)')]:null]),
+  h('h4',null,'By provider'),Object.keys(obj(k.by_provider)).length?h('dl',{class:'kv'},Object.entries(obj(k.by_provider)).map(([name,b])=>{b=obj(b);return [h('dt',null,name),h('dd',null,usd(b.usd)+' · '+tokens(b.calls)+' calls · '+tokens(b.input_tokens)+' tokens in')];})):h('div',{class:'muted'},'No provider calls yet.')]));}
+
+function renderFallbacks(s){const codes=obj(s.fallback_codes),total=n(s.fallback)??0;
+ $('fallback-count').textContent=fmt(s.fallback)+' total';
+ if(viewMode('fallbacks')==='json')return $('fallbacks').replaceChildren(shown('fallbacks',null,codes));
+ if(!('fallback_codes' in s)){$('fallbacks').replaceChildren(h('div',{class:'muted'},'This service does not report fallback codes.'));return;}
+ const names=[...new Set([...Object.keys(CODES),...Object.keys(codes)])];
+ $('fallbacks').replaceChildren(h('dl',{class:'kv'},names.map(code=>{const v=n(codes[code])??0;
+  return [h('dt',null,code,tip(CODES[code]||'A fallback code this console does not know.')),h('dd',{class:v?'warn':null},String(v)+(total&&v?' ('+Math.round(100*v/total)+'%)':''))];})));}
+
+/* ---------- context ---------- */
+function renderContext(c){const m=c.manifest,t=obj(c.telemetry),active=t.scope??c.scope??null,entities=arr(t.entities).map(obj),ctx=obj(c.context);
+ const history=arr(c.logs).map(obj).filter(l=>l.kind==='session'||l.kind==='context');
+ const usage={};for(const e of entities){const p=e.profile??obj(ctx[e.id]).profile;if(p!=null)(usage[p]??=[]).push(e.name||e.id);}
+ const counts={};for(const e of entities)counts[e.type]=(counts[e.type]||0)+1;
+ const sig=JSON.stringify([m??null,active,usage,counts,history.map(l=>l.id)]);if(sig===contextSig)return;contextSig=sig;
+ if(!m)return $('context').replaceChildren(h('div',{class:'card'},h('div',{class:'card-body muted'},'No session manifest received yet. The game sends it with /v1/session.')),historyCard(history));
+ const scopes=obj(m.scopes),profiles=obj(m.profiles),types=obj(m.entity_types);
+ $('context').replaceChildren(
+  h('div',{class:'cols'},
+   h('div',{class:'card'},h('div',{class:'card-head'},h('h3',null,'World',tip('Free text the game wrote for the model (rules, scale, units) and the shared fields it sends with every request. Sent once per batch.')),h('div',{class:'toolbar'},h('small',{class:'muted'},shortHash(c.manifest_hash)),viewToggle('world'))),
+    h('div',{class:'card-body'},shown('world',()=>[h('pre',null,m.world||'No world text.'),h('h4',null,'World fields',tip('Typed facts shared by every entity, sent as world state with each decision request.')),kv(m.world_fields,schema)],{world:m.world,world_fields:m.world_fields}))),
+   h('div',{class:'card'},h('div',{class:'card-head'},h('h3',null,'Profiles',tip('Named personalities or roles. An entity that names a profile gets its text in the model input, so entities of one type can behave differently. A profile with a type can only be used by that type.')),h('div',{class:'toolbar'},h('small',{class:'muted'},Object.keys(profiles).length+' profiles'),viewToggle('profiles'))),
+    h('div',{class:'card-body'},viewMode('profiles')==='json'?shown('profiles',null,profiles):Object.keys(profiles).length?Object.entries(profiles).map(([name,p])=>{p=obj(p);const users=usage[name]||[];
+     return h('div',{class:'profile'},h('div',{class:'scope-head'},h('strong',{style:'font-weight:normal'},name),p.type?badge('type '+p.type,''):badge('any type','')),h('p',null,p.text||'No text.'),
+      h('div',{class:'muted'},users.length?'Used by '+users.length+': '+users.slice(0,12).join(', ')+(users.length>12?' and '+(users.length-12)+' more':''):'Not used by any current entity.'));}):h('div',{class:'muted'},'No profiles declared.')))),
+  h('div',{class:'card'},h('div',{class:'card-head'},h('h3',null,'Scopes',tip('Nested parts of the game (region › zone › room, or campaign › mission › phase). The active scope and every parent above it are sent to the model with their texts and state fields. Scopes can change during a session.')),
+   h('div',{class:'toolbar'},h('small',{class:'muted'},active?'active: '+active:'no active scope'),viewToggle('scopes'))),h('div',{class:'card-body'},shown('scopes',()=>scopeTree(scopes,active),scopes))),
+  h('div',{class:'card'},h('div',{class:'card-head'},h('h3',null,'Entity types',tip('Each kind of entity the game declared: what it observes, what it may do, which events can trigger a decision, and its timing, budget and cache rules.')),h('small',{class:'muted'},Object.keys(types).length+' types')),
+   h('div',{class:'card-body'},h('div',{class:'types'},Object.entries(types).map(([name,ty])=>typeCard(name,obj(ty),counts[name]||0))))),
+  historyCard(history));}
+
+function scopeTree(scopes,active){const names=Object.keys(scopes),chain=new Set(scopeChain(scopes,active)),kids={},roots=[],out=[],seen=new Set();
+ if(!names.length)return h('div',{class:'muted'},'No scopes declared.');
+ for(const name of names){const p=obj(scopes[name]).parent;if(p!=null&&p!==name&&scopes[p])(kids[p]??=[]).push(name);else roots.push(name);}
+ const walk=(name,depth)=>{if(seen.has(name))return;seen.add(name);const s=obj(scopes[name]);
+  out.push(h('div',{class:'scope'+(name===active?' active':chain.has(name)?' chain':''),style:'margin-left:'+Math.min(depth,8)*20+'px'},
+   h('div',{class:'scope-head'},depth?h('span',{class:'muted'},'└'):null,h('strong',{style:'font-weight:normal'},name),name===active?badge('active','good'):chain.has(name)?badge('parent of active','info'):null,s.parent?h('small',{class:'muted'},'in '+s.parent):null),
+   h('p',null,s.text||'No text.'),Object.keys(obj(s.fields)).length?[h('div',{class:'muted'},'State fields',tip('Typed values the game sends as scope_state while this scope (or a child) is active.')),kv(s.fields,schema)]:null));
+  for(const k of kids[name]||[])walk(k,depth+1);};
+ roots.forEach(r=>walk(r,0));names.forEach(r=>walk(r,0));
+ return h('div',null,active!=null&&!scopes[active]?h('div',{class:'alert'},'The game reports scope "'+active+'", which the manifest does not declare.'):null,out);}
+
+function typeCard(name,ty,live){const cache=ty.cache&&typeof ty.cache==='object'?obj(ty.cache):null,actions=obj(ty.actions),events=obj(ty.events),slots=Object.entries(obj(ty.decisions));
+ return h('div',{class:'card'},h('div',{class:'card-head'},h('h3',null,name),h('span',{class:'toolbar'},Object.keys(actions).length||slots.length?null:[badge('observe-only',''),tip('No actions: the model never decides for this type. With a perception radius, what is near it is still summarised for others.')],h('small',{class:'muted'},live+' in scene'),viewToggle('type:'+name))),
+  viewMode('type:'+name)==='json'?h('div',{class:'card-body'},shown('type:'+name,null,ty)):h('div',{class:'card-body'},h('p',null,ty.description||'No description.'),
+   rows([
+    ['decision TTL',ms(ty.decision_ttl_ms),'How long a decision stays valid. After it the game returns to its native AI unless a new decision arrived.'],
+    ['refresh',ty.refresh_ms==null?'SDK default':ms(ty.refresh_ms),'How often the SDK re-asks without an event. A hint, not a guarantee.'],
+    ['perception radius',ty.perception_radius==null?'none':fmt(ty.perception_radius)+' units','Distance in game position units within which this type notices other entities (the nearby list).'],
+    ['token budget',ty.max_input_tokens==null?'unlimited':tokens(ty.max_input_tokens)+' tokens','Cap on the entity-specific input (observation, memory, nearby, members, parent, trigger, question). Over it, the decision falls back with code budget.']]),
+   h('h4',null,'Observes',tip('Fields this entity sends with each decision request, with their types.')),kv(ty.fields,schema),
+   slots.length?[h('h4',null,'Decides',tip('Independent decision slots: each is its own choice, asked together. The game narrows each slot to its legal actions at request time.')),...slots.map(([slot,d])=>h('div',null,h('strong',{style:'font-weight:normal'},slot),d.description?h('small',{class:'muted'},' '+d.description):null,kv(obj(d.actions))))]
+    :[h('h4',null,'Can do',tip('Actions the model may choose from. The game narrows them to the legal ones at request time.')),kv(actions)],
+   h('h4',null,'Events',tip('Reasons an entity may ask for a decision right now instead of waiting for its refresh timer. Sent as the trigger.')),kv(events),
+   h('h4',null,'Cache',tip('Lets the service reuse a decision for entities in the same situation. Only the key values (with numbers grouped into buckets), scope, profile, trigger and legal actions are compared; memory and nearby are ignored.')),
+   cache?rows([
+    ['key',arr(cache.key).join(', ')||'—','Values that must match for a cached decision to be reused. world.x and scope.x read world or scope state; parent.action is the group\'s decision.'],
+    ['buckets',Object.keys(obj(cache.buckets)).length?h('div',null,Object.entries(obj(cache.buckets)).map(([k,v])=>h('div',null,k+': '+arr(v).join(' | ')))):'exact values','Thresholds that group numbers into bands: [0.34, 0.67] gives bands 0, 1 and 2. Numbers without buckets must match exactly.'],
+    ['ttl',ms(cache.ttl_ms),'How long a cached decision may be reused.']]):h('div',{class:'muted'},'No cache: every decision asks the model.')));}
+
+function historyCard(history){return h('div',{class:'card'},h('div',{class:'card-head'},h('h3',null,'Context history',tip('Session starts (with their manifest) and mid-session scope or profile updates, newest first. Changed names are listed; removed ones no longer appear above.')),h('small',{class:'muted'},history.length+' events')),
+ h('div',{class:'card-body'},history.length?h('ul',{class:'timeline'},history.slice().reverse().map(l=>{const p=obj(l.payload),list=(label,v)=>arr(v).length?label+': '+arr(v).join(', '):null;
+  const parts=l.kind==='session'?[list('entity types',p.entity_types),list('scopes',p.scopes),list('profiles',p.profiles),p.manifest_hash?'manifest '+shortHash(p.manifest_hash):null]:[list('scopes changed',p.scopes),list('profiles changed',p.profiles)];
+  return h('li',null,h('small',{class:'muted'},time(l.at)+' '),badge(l.kind),' ',fmt(l.message),parts.some(Boolean)?h('div',{class:'outcome'},parts.filter(Boolean).join(' · ')):null);})):h('div',{class:'muted'},'No session or context events in the log.')));}
+
+/* ---------- entities ---------- */
+function grouped(list,parentOf){const ids=new Set(list.map(e=>e.id)),kids={},roots=[],out=[],seen=new Set();
+ for(const e of list){const p=parentOf(e);if(p!=null&&p!==e.id&&ids.has(p))(kids[p]??=[]).push(e);else roots.push(e);}
+ const walk=(e,d)=>{if(seen.has(e.id))return;seen.add(e.id);out.push([e,d]);for(const k of kids[e.id]||[])walk(k,d+1);};
+ roots.forEach(e=>walk(e,0));list.forEach(e=>walk(e,0));return out;}
+
+function renderEntities(c,entities){const sel=$('type-filter'),types=[...new Set(entities.map(e=>fmt(e.type)))].sort();
+ if(types.join('\0')!==typesSig){typesSig=types.join('\0');const v=sel.value;sel.replaceChildren(h('option',{value:''},'All types'),...types.map(t=>h('option',{value:t},t)));sel.value=types.includes(v)?v:'';}
+ const shown=entities.filter(e=>!sel.value||fmt(e.type)===sel.value),keys=[...new Set(entities.flatMap(e=>Object.keys(obj(e.fields))))],memory=obj(c.memory),ctx=obj(c.context),links=obj(c.links),byId=Object.fromEntries(entities.map(e=>[e.id,e])),logged=decisionLog(c.logs);
+ const parentOf=e=>e.parent??links[e.id]??obj(obj(ctx[e.id]).parent).id??null;
+ $('entity-count').textContent=shown.length+' of '+entities.length;
+ if(!selectedEntity||!entities.some(e=>e.id===selectedEntity))selectedEntity=shown[0]?.id??null;
+ const fixed=[['Entity'],['Type'],['Profile','Named profile the entity uses (its text is sent to the model). Details in the Context tab.'],['Parent','Group this entity belongs to (squad, crowd, formation). The model sees the parent\'s latest decision.'],['Game state','What the game is executing right now.'],['AI choice','Latest action chosen for this entity.'],['Source','AI: model decision; cached: reused from the decision cache. FALLBACK · code: no usable answer, native AI runs (code says why).'],['Trigger','Event that caused the last decision request, if any; otherwise a regular refresh.'],['Confidence','Provider confidence in the chosen action.'],['Age','Time since the decision arrived. It expires after the type\'s validity window.'],['Memory','Remembered past decisions with outcomes (max 8). Sent back to the model.']];
+ $('entity-head').replaceChildren(
+  h('tr',null,h('th',{colspan:fixed.length}),keys.length?h('th',{class:'group',colspan:keys.length},'Observation',tip('What the entity reports to the model (manifest fields).')):null),
+  h('tr',null,fixed.map(([k,help])=>h('th',null,k,help?tip(help):null)),keys.map((k,i)=>h('th',{class:i?null:'first-obs'},k))));
+ const focused=document.activeElement?.dataset?.entity,list=$('group-view').checked?grouped(shown,parentOf):shown.map(e=>[e,0]);
+ const out=list.map(([e,depth])=>{const d=obj(e.decision),age=decisionAge(d),x=obj(ctx[e.id]),mem=arr(memory[e.id]),parent=parentOf(e),trigger=x.trigger??obj(mem[mem.length-1]).trigger;
+  return h('tr',{'data-entity':e.id,tabindex:0,class:e.id===selectedEntity?'selected':null},
+  h('td',{style:depth?'padding-left:'+(12+Math.min(depth,6)*18)+'px':null},depth?h('span',{class:'muted'},'└ '):null,fmt(e.name||e.id),h('br'),h('small',{class:'muted'},fmt(e.id))),h('td',null,fmt(e.type)),
+  h('td',null,fmt(e.profile??x.profile)),h('td',null,parent==null?'—':[fmt(byId[parent]?.name||parent),byId[parent]?null:h('small',{class:'muted'},' (not in scene)')]),
+  h('td',null,badge(e.state,'')),
+  h('td',null,d.action?fmt(d.action):h('span',{class:'muted'},e.pending?'waiting…':'—')),h('td',null,sourceBadges(d,logged[e.id])??'—'),h('td',null,fmt(trigger)),h('td',null,pct(d.confidence)),
+  h('td',null,age==null?'—':(age/1000).toFixed(1)+' s'),h('td',null,String(mem.length)),
+  keys.map((k,i)=>h('td',{class:i?null:'first-obs'},fmt(obj(e.fields)[k]))));});
+ $('entities').replaceChildren(...(out.length?out:[h('tr',null,h('td',{colspan:fixed.length+keys.length,class:'muted'},entities.length?'No entities of this type.':'No entities in the latest telemetry.'))]));
+ if(focused)[...$('entities').children].find(r=>r.dataset.entity===focused)?.focus({preventScroll:true});
+ renderEntity(c,entities,{parentOf,byId,logged});}
+
+function renderEntity(c,entities,{parentOf,byId,logged}){const box=$('entity');
+ if(!selectedEntity){$('entity-title').textContent='Entity';$('entity-sub').textContent='';return box.replaceChildren(h('div',{class:'muted'},'Select an entity in the table.'));}
+ const e=entities.find(x=>x.id===selectedEntity),d=obj(e?.decision),ld=obj(logged[selectedEntity]),age=decisionAge(d),memory=arr(obj(c.memory)[selectedEntity]).slice().reverse(),logs=arr(c.logs).filter(l=>obj(l).entity===selectedEntity).slice(-15).reverse();
+ const x=obj(obj(c.context)[selectedEntity]),profiles=obj(obj(c.manifest).profiles),profile=e?.profile??x.profile,parentId=e?parentOf(e):null,parent=obj(x.parent);
+ const liveMembers=entities.filter(m=>m.id!==selectedEntity&&parentOf(m)===selectedEntity),members=arr(x.members).map(obj);
+ $('entity-title').textContent=e?.name||selectedEntity;$('entity-sub').textContent=fmt(e?.type)+' · '+selectedEntity;
+ if(viewMode('entity')==='json')return box.replaceChildren(shown('entity',null,{telemetry:e??null,context:obj(c.context)[selectedEntity]??null,memory:arr(obj(c.memory)[selectedEntity]),events:logs}));
+ box.replaceChildren(
+  h('h4',{style:'margin-top:0'},'Current decision',tip('The latest choice for this entity. Label is the manifest description of the action, not model reasoning.')),
+  d.source?rows([['action',[fmt(d.action),' ',sourceBadges(d,ld)]],['meaning',fmt(d.label||d.reason)],['confidence',pct(d.confidence)],['age',age==null?'—':(age/1000).toFixed(1)+' s'],['round trip',d.latency_ms==null?'—':fmt(d.latency_ms)+' ms'],
+   (d.decision_id??ld.decision_id)&&['decision id',h('span',{title:String(d.decision_id??ld.decision_id)},shortId(d.decision_id??ld.decision_id)),'Unique id the game echoes in its outcome report. Reports with an unknown or repeated id are ignored.']])
+   :h('div',{class:'muted'},latest?.telemetry?.mode==='ai'?'No decision yet.':'AI control is off; the game\'s native AI drives this entity.'),
+  h('h4',null,'Context at last request',tip('What A2G knew about this entity when it last asked for a decision.')),
+  x.at?rows([['requested',ago(x.at)],['trigger',x.trigger==null?'none (refresh)':fmt(x.trigger),'The event that made the entity ask now. Without one it was a regular refresh.'],
+   ['profile',profile==null?'—':[fmt(profile),profiles[profile]?h('div',{class:'muted',style:'font-family:Verdana,sans-serif'},obj(profiles[profile]).text):null]],
+   ['tokens',tokenBar(x.input_tokens,x.max_input_tokens),'Estimated entity-specific input tokens versus the type\'s max_input_tokens. Over budget the decision falls back with code budget.']]):h('div',{class:'muted'},'Not requested yet.'),
+  h('h4',null,'Group',tip('Parent: the group this entity belongs to and that group\'s latest decision, as sent to the model. Members: entities that name this one as their parent.')),
+  parentId==null&&!liveMembers.length&&!members.length?h('div',{class:'muted'},'Not part of a group.'):h('div',null,
+   parentId!=null?rows([['parent',fmt(byId[parentId]?.name||parentId)],['parent decision',parent.action?[fmt(parent.action),parent.label?h('div',{class:'muted',style:'font-family:Verdana,sans-serif'},parent.label):null]:'—'],['decided',parent.seconds_ago==null?'—':fmt(parent.seconds_ago)+' s before the request']]):null,
+   members.length?[h('div',{class:'muted',style:'margin:8px 0 4px'},'Members at last request ('+members.length+')'),h('ul',{class:'timeline'},members.map(m=>h('li',null,fmt(byId[m.id]?.name||m.id),' ',h('small',{class:'muted'},fmt(m.type)+' · '+fmt(m.state)+(m.action?' · chose '+m.action:'')))))]
+    :liveMembers.length?[h('div',{class:'muted',style:'margin:8px 0 4px'},'Members now ('+liveMembers.length+')'),h('ul',{class:'timeline'},liveMembers.map(m=>h('li',null,fmt(m.name||m.id),' ',h('small',{class:'muted'},fmt(m.type)+' · '+fmt(m.state)))))]:null),
+  h('h4',null,'Memory · '+memory.length+' of 8',tip('Past decisions and how they ended, newest first. Status: executed = carried out; blocked = the game could not do it and did something safe; expired = it timed out; pending = not reported yet. Deltas show how observed numbers changed. The model sees this memory in its next request.')),
+  memory.length?h('ul',{class:'timeline'},memory.map(m=>{m=obj(m);const out=Object.entries(obj(m.outcome));return h('li',null,h('strong',{style:'font-weight:normal'},fmt(m.action)),' ',badge(m.status),m.cached?[' ',badge('cached','info')]:null,' ',h('small',{class:'muted'},pct(m.confidence)+' · '+ago(m.at)),
+   h('div',{class:'muted'},[m.decision_id?h('span',{title:String(m.decision_id)},shortId(m.decision_id)):null,m.trigger?' · trigger '+m.trigger:null]),
+   m.label?h('div',{class:'muted'},m.label):null,out.length?h('div',{class:'outcome'},out.map(([k,v])=>k.replace(/_delta$/,' Δ')+' '+(typeof v==='number'&&v>0?'+':'')+fmt(v)).join('   ')):null);})):h('div',{class:'muted'},'Nothing remembered yet. Memory fills as decisions end and the game reports outcomes.'),
+  h('h4',null,'Surroundings at last request',tip('Computed by A2G from telemetry positions and sent to the model: entities within this type\'s perception radius (nearest first), and how many of each type are alive in the scene versus seen.')),
+  surroundings(x),
+  h('h4',null,'Observation',tip('What this entity reported in the latest telemetry.')),kv(e?.fields),
+  e?.position?h('div',{class:'muted',style:'margin-top:6px'},'position '+fmt(e.position)):null,
+  h('h4',null,'Recent events'),logs.length?h('ul',{class:'timeline'},logs.map(l=>h('li',null,h('small',{class:'muted'},time(l.at)+' '),badge(l.kind),' ',fmt(l.message)))):h('div',{class:'muted'},'No events for this entity.'));}
+
+function population(p){const rows=Object.entries(obj(p));return rows.length?h('dl',{class:'kv'},rows.map(([type,v])=>{v=obj(v);return [h('dt',null,type),h('dd',null,fmt(v.alive)+' alive of '+fmt(v.seen)+' seen'+(v.gone?' · '+v.gone+' gone':''))];})):h('div',{class:'muted'},'No population data yet.');}
+function surroundings(ctx){if(!ctx.at)return h('div',{class:'muted'},'Not requested yet.');const near=ctx.nearby;
+ return h('div',null,near==null?h('div',{class:'muted'},'No positions or perception radius for this type.'):arr(near).length?h('ul',{class:'timeline'},arr(near).map(n=>{n=obj(n);const extra=Object.entries(n).filter(([k])=>!['id','type','distance','state','action'].includes(k));
+   return h('li',null,h('strong',{style:'font-weight:normal'},fmt(n.type)),' ',h('small',{class:'muted'},fmt(n.distance)+' away · '+fmt(n.state)+(n.action?' · chose '+n.action:'')),extra.length?h('div',{class:'outcome'},extra.map(([k,v])=>k+' '+fmt(v)).join('   ')):null);})):h('div',{class:'muted'},'Nobody within perception radius.'),
+  h('div',{class:'muted',style:'margin:8px 0 4px'},'Population ('+ago(ctx.at)+')'),population(ctx.population));}
+
+const pickEntity=e=>{const r=e.target.closest('tr[data-entity]');if(!r)return;selectedEntity=r.dataset.entity;if(latest)render(latest);};
+$('entities').addEventListener('click',pickEntity);$('entities').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pickEntity(e);}});
+$('type-filter').addEventListener('change',()=>{selectedEntity=null;latest&&render(latest);});
+$('group-view').addEventListener('change',()=>latest&&render(latest));
+
+/* ---------- logs ---------- */
+$('filter').replaceChildren(h('option',{value:'all'},'All events'),...Object.keys(KINDS).map(k=>h('option',{value:k},k)));
+$('legend').replaceChildren(...Object.entries(KINDS).map(([k,v])=>h('span',null,badge(k),tip(v))),h('span',null,badge('cached','info'),tip('Decision reused from the decision cache; no provider call was made for it.')),h('span',null,badge('code','warn'),tip('Fallback reason: unavailable, busy, refused, invalid_choice or budget. Hover the codes in the Overview tab for details.')));
+function renderLogs(){if(!latest)return;const kind=$('filter').value,q=$('search').value.toLowerCase(),logs=arr(latest.logs).map(obj).filter(l=>(kind==='all'||l.kind===kind)&&JSON.stringify(l).toLowerCase().includes(q));
+ const sig=kind+'\0'+q+'\0'+logs.map(l=>l.id).join(',');if(sig===lastLogs)return;lastLogs=sig;
+ const opened=new Set([...$('logs').querySelectorAll('details[open]')].map(e=>e.dataset.id));
+ const items=logs.slice().reverse().map(l=>{const p=obj(l.payload);return h('details',{'data-id':l.id,open:opened.has(String(l.id))},h('summary',null,h('time',null,time(l.at)),badge(l.kind),' ',fmt(l.message),
+  p.cached===true?[' ',badge('cached','info')]:null,p.code!=null?[' ',badge(p.code,'warn')]:null),h('pre',null,JSON.stringify(l.payload??null,null,2)));});
+ $('logs').replaceChildren(...(items.length?items:[h('div',{class:'card-body muted'},'No matching events.')]));}
+$('filter').addEventListener('change',renderLogs);$('search').addEventListener('input',renderLogs);
+
+/* ---------- manifest editor ---------- */
+let manifestFor=null,manifestDirty=false;
+async function api(method,path,body){const r=await fetch(path,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body??{})});
+ const d=obj(await r.json().catch(()=>({})));if(!r.ok)throw Error(d.error||'HTTP '+r.status);return d;}
+const mStatus=(text,cls)=>{$('manifest-status').textContent=text;$('manifest-status').className=cls||'muted';};
+function editedManifest(){try{return JSON.parse($('manifest-text').value);}catch(err){mStatus('Not valid JSON: '+err.message,'bad');return undefined;}}
+function renderManifest(c){const raw=c.manifest_raw??null,key=c.id+'\0'+(c.override?.manifest_hash??c.manifest_hash);
+ $('manifest-state').replaceChildren(c.override?badge('override active','warn'):badge(raw?'game manifest':'no manifest',raw?'good':''));$('m-clear').hidden=!c.override;
+ if(!manifestDirty&&key!==manifestFor){manifestFor=key;$('manifest-text').value=raw==null?'':JSON.stringify(raw,null,2);
+  mStatus(raw==null?'No manifest from this client yet. It arrives with /v1/session.':c.override?'Showing the override this service uses for '+fmt(c.game)+'.':'Showing the manifest '+fmt(c.game)+' sent.');}}
+$('manifest-text').addEventListener('input',()=>{manifestDirty=true;mStatus('Unsaved edits. They stay here until you apply, download or discard them.','warn');});
+$('m-format').addEventListener('click',()=>{const m=editedManifest();if(m!==undefined){$('manifest-text').value=JSON.stringify(m,null,2);mStatus('Formatted.');}});
+$('m-validate').addEventListener('click',async()=>{const m=editedManifest();if(m===undefined)return;
+ try{const r=await api('POST','api/manifest/validate',{manifest:m});mStatus('Valid A2G manifest · '+shortHash(r.manifest_hash),'good');}catch(err){mStatus('Invalid: '+err.message,'bad');}});
+$('m-download').addEventListener('click',()=>{const m=editedManifest();if(m===undefined)return;
+ const a=h('a',{href:URL.createObjectURL(new Blob([JSON.stringify(m,null,2)+'\n'],{type:'application/json'})),download:'a2g_manifest.json'});a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);mStatus('Downloaded a2g_manifest.json.');});
+$('m-apply').addEventListener('click',async()=>{const m=editedManifest();if(m===undefined||!latest)return;
+ try{await api('POST','api/override',{game:latest.game,manifest:m});manifestDirty=false;manifestFor=null;mStatus('Override applied to every session of '+fmt(latest.game)+'.','good');refresh();}catch(err){mStatus('Not applied: '+err.message,'bad');}});
+async function clearOverride(){if(!latest)return;try{await api('POST','api/override',{game:latest.game,manifest:null});manifestDirty=false;manifestFor=null;mStatus('Override cleared: the game manifest is used again.','good');refresh();}catch(err){mStatus(err.message,'bad');}}
+$('m-clear').addEventListener('click',clearOverride);
+$('m-discard').addEventListener('click',()=>{manifestDirty=false;manifestFor=null;if(latest)renderManifest(latest);});
+
+/* ---------- client + polling ---------- */
+function render(c){latest=c;const t=obj(c.telemetry),entities=arr(t.entities).map(obj).filter(e=>e.id!=null);$('empty').hidden=true;$('detail').hidden=false;
+ $('name').textContent=fmt(c.game||c.id);$('identity').textContent=[c.engine||'engine unknown','client '+c.id,'last seen '+fmt(c.age_seconds)+' s ago'].join(' · ');
+ const profile=c.profile??service.profile;
+ $('meta').replaceChildren(
+  h('span',null,badge('A2G '+fmt(c.protocol),''),tip('Protocol version this client declared at session start.')),
+  h('span',null,badge('profile '+fmt(profile),profile==='local'?'info':''),tip('Security profile. local: the service listens on 127.0.0.1 only, trusts this machine, and rejects requests with a foreign Host or Origin. Context stays per session.')),
+  h('span',null,h('span',{class:'badge',title:c.manifest_hash||'No manifest hash'},'manifest '+shortHash(c.manifest_hash)),tip('SHA-256 of the manifest without scopes and profiles. Clients with the same hash share the decision cache. Hover the badge for the full hash.')));
+ $('connection').textContent=fmt(c.status);$('connection').className='badge '+tone(c.status);
+ $('tab-entities').textContent='Entities ('+entities.length+')';$('tab-logs').textContent='Logs ('+arr(c.logs).length+')';
+ $('tab-context').textContent='Context'+(t.scope!=null?' · '+t.scope:'');$('tab-manifest').textContent='Manifest'+(c.override?' · override':'');
+ $('override-banner').replaceChildren(...(c.override?[h('div',{class:'banner',role:'status'},h('span',null,'Manifest override active for '+fmt(c.game)+' since '+time(c.override.at)+': the service uses the manifest edited in this console, not the one the game sent.'),
+  h('button',{type:'button','data-tab-link':'manifest'},'Edit'),h('button',{type:'button','data-clear-override':''},'Clear override'))]:[]));
+ $('delete').disabled=c.status==='online';
+ if(tab==='overview')renderOverview(c);else if(tab==='entities')renderEntities(c,entities);else if(tab==='context')renderContext(c);else if(tab==='manifest')renderManifest(c);else renderLogs();}
+$('override-banner').addEventListener('click',e=>{if(e.target.closest('[data-tab-link]'))showTab('manifest');else if(e.target.closest('[data-clear-override]')&&confirm('Clear the manifest override? The service goes back to the manifest the game sent.'))clearOverride();});
+
+function renderClients(){const sel=$('clients');const label=c=>({online:'●',stale:'◐',offline:'○'}[c.status]||'○')+' '+fmt(c.game||c.id)+' · '+fmt(c.mode)+' · '+fmt(c.scene)+(c.scope!=null?' › '+c.scope:'')+' · '+fmt(c.entity_count)+' entities · '+fmt(c.age_seconds)+' s ago · '+c.id;
+ sel.replaceChildren(...(clients.length?clients.map(c=>h('option',{value:c.id},label(c))):[h('option',{value:''},'Waiting for game clients…')]));sel.value=selected||'';}
+
+function resetClientView(){lastLogs='';contextSig='\0';typesSig='\0';selectedEntity=null;$('type-filter').value='';$('logs').replaceChildren();}
+async function refresh(){if(busy)return;busy=true;try{
+ const r=await fetch('api/clients',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
+ const all=obj(await r.json());const total=obj(all.cost);
+ $('spend').replaceChildren((all.persistent?'All time: ':'Since start: ')+usd(total.usd)+' · '+tokens(total.calls)+' calls',tip(all.persistent?'Estimated provider spend for every client, read from the local database (a2g-poc/a2g.db). It survives service restarts and session deletion. Service uptime '+Math.round((all.uptime_seconds||0)/60)+' min.':'Estimated provider spend since the service started. No database is open, so it resets on restart.'));
+ clients=arr(all.clients).map(obj).filter(c=>c.id!=null).sort((a,b)=>(b.last_seen||0)-(a.last_seen||0));
+ $('service').textContent=(displayPaused?'● Service online · display paused':'● Service online')+(service.profile?' · '+service.profile+' profile':'');$('service').className=displayPaused?'warn':'good';
+ const newest=clients[0]?.id??null;
+ if(($('follow').checked||!clients.some(c=>c.id===selected))&&newest!==selected){selected=newest;resetClientView();}
+ renderClients();
+ if(!selected){latest=null;$('detail').hidden=true;$('empty').hidden=false;return;}
+ if(!displayPaused){const id=selected,d=await fetch('api/clients/'+encodeURIComponent(id),{cache:'no-store'});if(!d.ok)throw Error('Client unavailable');const c=obj(await d.json());if(id===selected&&!displayPaused)render(c);}
+}catch(err){$('service').textContent='● Service unavailable · retrying';$('service').className='bad';console.warn(err);}finally{busy=false;}}
+async function health(){try{service=obj(await (await fetch('health',{cache:'no-store'})).json());
+ $('service').title=[fmt(service.service),'A2G '+fmt(service.a2g??service.protocol),'profile '+fmt(service.profile),'provider '+fmt(service.provider),service.key_configured?'API key configured (not a connection test)':'no API key'].join(' · ');
+ const p=$('provider'),list=obj(service.providers),sig=JSON.stringify([service.provider_id,list]);
+ if(p.dataset.sig!==sig&&document.activeElement!==p){p.dataset.sig=sig;p.replaceChildren(...Object.entries(list).map(([id,v])=>{const o=document.createElement('option');o.value=id;o.textContent=fmt(v.name)+(v.key_configured?'':' (no key)');return o;}));p.value=service.provider_id??'';}}catch{}}
+$('provider').addEventListener('change',async e=>{try{await api('POST','api/provider',{provider:e.target.value});}catch(err){alert(err.message);}$('provider').dataset.sig='';health();});
+$('clients').addEventListener('change',e=>{selected=e.target.value||null;$('follow').checked=false;resetClientView();refresh();});
+$('follow').addEventListener('change',()=>refresh());
+$('delete').addEventListener('click',async()=>{if(!selected||!confirm('Delete session '+selected+'? Its summary is removed from the console and the database; its spend stays in the all-time total.'))return;
+ try{await api('DELETE','api/clients/'+encodeURIComponent(selected));selected=null;resetClientView();refresh();}catch(err){alert(err.message);}});
+$('prune').addEventListener('click',async()=>{const old=clients.filter(c=>c.status==='offline');if(!old.length)return alert('No offline sessions.');
+ if(!confirm('Delete '+old.length+' offline session(s)? Their spend stays in the all-time total.'))return;try{await api('DELETE','api/clients');refresh();}catch(err){alert(err.message);}});
+$('pause').addEventListener('click',()=>{displayPaused=!displayPaused;$('pause').textContent=displayPaused?'Resume display':'Pause display';if(!displayPaused)refresh();});
+// Open tooltips toward the side with more room.
+for(const type of ['mouseover','focusin'])document.addEventListener(type,e=>{const t=e.target.closest?.('.tip');if(t)t.classList.toggle('flip',t.getBoundingClientRect().left>innerWidth/2);});
+addEventListener('hashchange',()=>showTab(location.hash.slice(1)));
+showTab(tab);health();refresh();setInterval(refresh,1000);
+</script></body></html>

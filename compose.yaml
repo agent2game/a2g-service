@@ -1,0 +1,11 @@
+services:
+  a2g:
+    build: .
+    env_file: .env  # provider keys (OPENAI_API_KEY or TYPESAFE_API_KEY); copy .env.example
+    ports:
+      - "127.0.0.1:${A2G_PORT:-8787}:${A2G_PORT:-8787}"  # local profile: never published beyond this machine
+    volumes:
+      - a2g-data:/data  # SQLite database survives restarts and rebuilds
+    restart: unless-stopped
+volumes:
+  a2g-data:

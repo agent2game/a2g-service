@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # The schema conformance tests read a sibling a2g-protocol checkout.
+      - name: Protocol schema
+        run: |
+          git clone --depth 1 https://github.com/agent2game/a2g-protocol.git ../a2g-protocol
+          npm ci --prefix ../a2g-protocol/schema
+      - run: pip install -r requirements-dev.txt
+      - run: python -m unittest discover -s tests -v
+
+  image:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: version
+        run: echo "tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/agent2game/a2g-service:${{ steps.version.outputs.tag }}
+            ghcr.io/agent2game/a2g-service:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/agent2game/a2g-service
+            org.opencontainers.image.description=A2G reference decision service and Agent2Game Console
+            org.opencontainers.image.licenses=Apache-2.0

@@ -1,0 +1,7 @@
+.env
+.venv/
+.omc/
+__pycache__/
+a2g.db*
+artifacts/
+.DS_Store
